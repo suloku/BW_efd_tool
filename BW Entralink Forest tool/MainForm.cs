@@ -16,6 +16,23 @@ using System.Text;
 using System.Windows.Forms;
 using System.IO;
 
+/*
+Kaphotics info about forest data:
+
+0x850 bytes of data
+u16 update counter
+u16 checksum
+
+checksum: crc-ccitt (16 bit) over the 0x850 range
+encryption seed: last 4 bytes of the 0x850 bytes (the only thing that isn't encrypted!)
+encryption method: 32bit lcrng, same used for Pokemon encryption, xor (result >> 16).
+
+The internal structure should be pretty easy to figure out if you just compare it to PokeStock's display. Something like u16 Species, u16 Move. 
+A species' level is static, determined by a table stored in the ROM (NARC file) afaik.
+
+The one save file I checked had it at 0x22A00, must have been B2W2 (not BW).
+
+*/
 
 namespace BW_Entralink_Forest_tool
 {
@@ -38,6 +55,7 @@ namespace BW_Entralink_Forest_tool
 		string forestfile;
 		byte[] savebuffer = new byte[524288];
 		byte[] forestbuffer = new byte[2304];
+		byte[] forestbuffer_dec = new byte[2304];
 
 		//adapted from Gocario's PHBank (www.github.com/gocario/phbank)
 		byte[] ccitt16(byte[] data)
@@ -60,6 +78,33 @@ namespace BW_Entralink_Forest_tool
 			}
 		
 			return BitConverter.GetBytes(crc);
+		}
+		UInt32 LCRNG(UInt32 seed)
+		// --------------------------------------------------
+		{
+			UInt32 a = 0x41c64e6d;
+			UInt32 c = 0x00006073;
+			return (UInt32)(((UInt64)seed * (UInt64)a + (UInt64)c)&0x00000000FFFFFFFF);
+		}
+		void decryptForest()
+		// --------------------------------------------------
+		{
+			Array.Copy(forestbuffer, forestbuffer_dec, 2304);
+		
+			UInt32 pv = BitConverter.ToUInt32(forestbuffer_dec, 0x84C);
+			byte sv = (byte)((((pv & 0x3e000) >> 0xd) % 24)&0x000000FF);
+		
+			UInt32 seed = pv;
+			UInt16 tmp;
+
+			for (Int32 i = 0x0; i < 0x850; i += 0x2)
+			{
+				tmp = BitConverter.ToUInt16(forestbuffer_dec, i);
+		
+				seed = LCRNG(seed);
+				tmp ^= (UInt16)((seed >> 16)&0x0000FFFF);
+				Array.Copy(BitConverter.GetBytes(tmp), 0, forestbuffer_dec, i, 2);
+			}
 		}
 
 		/// <summary>
@@ -126,6 +171,20 @@ namespace BW_Entralink_Forest_tool
 	            MessageBox.Show("File Saved.", "Save file");
             }
 		}
+		private void PDR_save_decforest_data()
+		{	SaveFileDialog saveFD = new SaveFileDialog();
+            //saveFD.InitialDirectory = "c:\\";
+            saveFD.Filter = "Entralink Forest Decrypted Data|*.efdd|All Files (*.*)|*.*";
+            if (saveFD.ShowDialog() == DialogResult.OK)
+            {
+	            System.IO.FileStream saveFile;
+	            saveFile = new FileStream(saveFD.FileName, FileMode.Create);            
+	            //Write file
+	            saveFile.Write(forestbuffer_dec, 0, forestbuffer_dec.Length);
+	            saveFile.Close();
+	            MessageBox.Show("File Saved.", "Save file");
+            }
+		}
 		private void PDR_dump_forest_data()
 		{	if (savegamename.Text.Length < 1) return;
             SaveFileDialog saveFD = new SaveFileDialog();
@@ -141,19 +200,6 @@ namespace BW_Entralink_Forest_tool
 	            MessageBox.Show("Entralink forest data dumped to:\r"+saveFD.FileName+".", "Dump Entralink Forest Data");
             }
 		}
-		private void PDR_read_forest_data()
-		{
-	            System.IO.FileStream saveFile;
-	            saveFile = new FileStream(forestfile, FileMode.Open);
-	            if (saveFile.Length != 0x900){
-	            	//forestfile = "";
-	            	MessageBox.Show("Invalid file length", "Error");
-	            	return;
-	            }
-	            ReadWholeArray(saveFile, forestbuffer);
-	            saveFile.Close();
-	            PDR_injectNsave();
-		}
 		private void PDR_get_forest_data()
         {
             OpenFileDialog openFD = new OpenFileDialog();
@@ -168,6 +214,18 @@ namespace BW_Entralink_Forest_tool
             }
             
         }
+		private void PDR_read_forest_data()
+		{
+	            System.IO.FileStream forestFile;
+	            forestFile = new FileStream(forestfile, FileMode.Open);
+	            if (forestFile.Length != 0x900){
+	            	//forestfile = "";
+	            	MessageBox.Show("Invalid file length", "Error");
+	            	return;
+	            }
+	            ReadWholeArray(forestFile, forestbuffer);
+	            forestFile.Close();
+		}
 		private void PDR_injectNsave()
 		{
 			//Put new forest in both save file slots
@@ -213,9 +271,11 @@ namespace BW_Entralink_Forest_tool
 		{
 			if (savegamename.Text.Length > 0){
 				dump_but.Enabled = true;
+				dump_dec_but.Enabled = true;
 				inject_but.Enabled = true;
 			}else{
 				dump_but.Enabled = false;
+				dump_dec_but.Enabled = false;
 				inject_but.Enabled = false;
 			}
 
@@ -223,6 +283,14 @@ namespace BW_Entralink_Forest_tool
 		void Inject_butClick(object sender, EventArgs e)
 		{
 			PDR_get_forest_data();
+			PDR_injectNsave();
+		}
+		void Dump_dec_butClick(object sender, EventArgs e)
+		{
+			//Copy forest to buffer
+			Array.Copy(savebuffer, 0x22C00, forestbuffer, 0, 0x900);
+			decryptForest();
+			PDR_save_decforest_data();
 		}
 
 	}

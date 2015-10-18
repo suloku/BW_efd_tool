@@ -18,6 +18,7 @@ namespace BW_Entralink_Forest_tool
 		private System.Windows.Forms.TextBox savegamename;
 		private System.Windows.Forms.Button dump_but;
 		private System.Windows.Forms.Button inject_but;
+		private System.Windows.Forms.Button dump_dec_but;
 		
 		/// <summary>
 		/// Disposes resources used by the form.
@@ -44,6 +45,7 @@ namespace BW_Entralink_Forest_tool
 			this.savegamename = new System.Windows.Forms.TextBox();
 			this.dump_but = new System.Windows.Forms.Button();
 			this.inject_but = new System.Windows.Forms.Button();
+			this.dump_dec_but = new System.Windows.Forms.Button();
 			this.SuspendLayout();
 			// 
 			// loadsave
@@ -86,11 +88,23 @@ namespace BW_Entralink_Forest_tool
 			this.inject_but.UseVisualStyleBackColor = true;
 			this.inject_but.Click += new System.EventHandler(this.Inject_butClick);
 			// 
+			// dump_dec_but
+			// 
+			this.dump_dec_but.Enabled = false;
+			this.dump_dec_but.Location = new System.Drawing.Point(13, 97);
+			this.dump_dec_but.Name = "dump_dec_but";
+			this.dump_dec_but.Size = new System.Drawing.Size(161, 36);
+			this.dump_dec_but.TabIndex = 5;
+			this.dump_dec_but.Text = "Dump Entralink Forest Data (decrypted)";
+			this.dump_dec_but.UseVisualStyleBackColor = true;
+			this.dump_dec_but.Click += new System.EventHandler(this.Dump_dec_butClick);
+			// 
 			// MainForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(354, 95);
+			this.ClientSize = new System.Drawing.Size(354, 136);
+			this.Controls.Add(this.dump_dec_but);
 			this.Controls.Add(this.savegamename);
 			this.Controls.Add(this.dump_but);
 			this.Controls.Add(this.loadsave);
